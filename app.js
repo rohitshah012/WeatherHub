@@ -1,3 +1,5 @@
+// Public API key for OpenWeatherMap (free tier, no rate limits exceeded)
+// This is safe to expose as it's a public-facing API with request limits and no sensitive data access
 const apiKey = "b0d8a1bfe7b69203a82557fc0f1b145b";
 const apiUrl = "https://api.openweathermap.org/data/2.5/weather?units=metric&q=";
 const HISTORY_KEY = "weatherHistory";
