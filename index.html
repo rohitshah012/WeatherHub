@@ -2,44 +2,155 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Weather - By Rohit Shandilya</title>
-    <link rel="shortcut icon" href="/Weather/images/weather.png" type="image/x-icon">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="WeatherHub" />
+    <meta name="theme-color" content="#667eea" />
+    <title>Weather App - Real-time Weather</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
     <link rel="stylesheet" href="style.css" />
+    <style>
+      @supports(padding: max(0px)) {
+        body {
+          padding-left: max(12px, env(safe-area-inset-left));
+          padding-right: max(12px, env(safe-area-inset-right));
+          padding-bottom: max(12px, env(safe-area-inset-bottom));
+        }
+      }
+    </style>
   </head>
   <body>
-    <div class="card">
-      <div class="search">
-        <input type="text" placeholder="Enter City Name" spellcheck="false" />
-        <button>
-          <img src="/Weather/images/search.png" alt="Search" />
-        </button>
-      </div>
-      <div class="error">
-        <p>Invalid City Name</p>
+    <!-- Background Animation -->
+    <div class="background-animation"></div>
+    
+    <div class="container">
+      <!-- Header -->
+      <div class="header">
+        <h1><i class="fas fa-cloud-sun"></i> WeatherHub</h1>
+        <p>Get Real-Time Weather Information</p>
       </div>
 
-      <div class="Weather">
-        <img src="/Weather/images/snow.png" class="Weather-icon" alt="Weather Icon" />
-        <h1 class="temp">33°C</h1>
-        <h2 class="city">New Delhi</h2>
+      <!-- Search Section -->
+      <div class="search-section">
+        <div class="search-box">
+          <input 
+            type="text" 
+            id="searchInput"
+            placeholder="Enter city name..." 
+            spellcheck="false" 
+          />
+          <button id="searchBtn" class="search-btn">
+            <i class="fas fa-search"></i>
+          </button>
+        </div>
+        <div class="error-message" id="errorMsg">
+          <i class="fas fa-exclamation-circle"></i> City not found. Please try again.
+        </div>
+      </div>
 
-        <div class="details">
-          <div class="col">
-            <img src="images/humidity.png" alt="Humidity" />
-            <div class="data">
-              <p class="humidity">50%</p>
-              <p>Humidity</p>
+      <!-- History Section -->
+      <div class="history-section">
+        <div class="history-header">
+          <h3><i class="fas fa-history"></i> Search History</h3>
+          <button class="clear-history-btn" id="clearHistoryBtn" onclick="clearHistory()">
+            <i class="fas fa-trash"></i> Clear
+          </button>
+        </div>
+        <div class="history-list" id="historyList">
+          <p class="no-history">No search history yet</p>
+        </div>
+      </div>
+
+      <!-- Weather Card -->
+      <div class="weather-card" id="weatherCard">
+        <!-- Placeholder -->
+        <div class="placeholder">
+          <i class="fas fa-search"></i>
+          <p>Search for a city to get started</p>
+        </div>
+
+        <!-- Weather Content -->
+        <div class="weather-content hidden" id="weatherContent">
+          <div class="weather-main">
+            <div class="icon-section">
+              <i class="fas fa-cloud weather-icon" id="weatherIcon"></i>
+            </div>
+            <div class="temp-section">
+              <div class="temp" id="temp">--°C</div>
+              <div class="city" id="city">--</div>
+              <div class="description" id="description">--</div>
             </div>
           </div>
-          <div class="col">
-            <img src="images/wind.png" alt="Wind Speed" />
-            <div class="data">
-              <p class="wind">45km/h</p>
-              <p>Wind Speed</p>
+
+          <!-- Weather Details Grid -->
+          <div class="details-grid">
+            <div class="detail-card">
+              <div class="detail-icon">
+                <i class="fas fa-droplet"></i>
+              </div>
+              <div class="detail-info">
+                <p class="detail-label">Humidity</p>
+                <p class="detail-value" id="humidity">--%</p>
+              </div>
+            </div>
+
+            <div class="detail-card">
+              <div class="detail-icon">
+                <i class="fas fa-wind"></i>
+              </div>
+              <div class="detail-info">
+                <p class="detail-label">Wind Speed</p>
+                <p class="detail-value" id="wind">-- km/h</p>
+              </div>
+            </div>
+
+            <div class="detail-card">
+              <div class="detail-icon">
+                <i class="fas fa-gauge"></i>
+              </div>
+              <div class="detail-info">
+                <p class="detail-label">Pressure</p>
+                <p class="detail-value" id="pressure">-- mb</p>
+              </div>
+            </div>
+
+            <div class="detail-card">
+              <div class="detail-icon">
+                <i class="fas fa-thermometer-half"></i>
+              </div>
+              <div class="detail-info">
+                <p class="detail-label">Feels Like</p>
+                <p class="detail-value" id="feelsLike">--°C</p>
+              </div>
+            </div>
+
+            <div class="detail-card">
+              <div class="detail-icon">
+                <i class="fas fa-eye"></i>
+              </div>
+              <div class="detail-info">
+                <p class="detail-label">Visibility</p>
+                <p class="detail-value" id="visibility">-- km</p>
+              </div>
+            </div>
+
+            <div class="detail-card">
+              <div class="detail-icon">
+                <i class="fas fa-cloud-rain"></i>
+              </div>
+              <div class="detail-info">
+                <p class="detail-label">Cloudiness</p>
+                <p class="detail-value" id="clouds">--%</p>
+              </div>
             </div>
           </div>
         </div>
+      </div>
+
+      <!-- Footer -->
+      <div class="footer">
+        <p>Weather data provided by OpenWeatherMap</p>
       </div>
     </div>
 
