@@ -1,16 +1,26 @@
 // Public API key for OpenWeatherMap (free tier, no rate limits exceeded)
 // This is safe to expose as it's a public-facing API with request limits and no sensitive data access
 const apiKey = "b0d8a1bfe7b69203a82557fc0f1b145b";
-const apiUrl = "https://api.openweathermap.org/data/2.5/weather?units=metric&q=";
+const apiEndpoint = "https://api.openweathermap.org/data/2.5/weather";
 const HISTORY_KEY = "weatherHistory";
 const MAX_HISTORY = 10;
+const WEATHER_CARD_THEME_CLASSES = [
+  "theme-clear",
+  "theme-clouds",
+  "theme-rain",
+  "theme-snow",
+  "theme-thunderstorm",
+];
 
 const searchInput = document.querySelector("#searchInput");
 const searchBtn = document.querySelector("#searchBtn");
 const errorMsg = document.querySelector("#errorMsg");
+const errorText = document.querySelector("#errorText");
 const weatherCard = document.querySelector("#weatherCard");
 const placeholder = document.querySelector(".placeholder");
 const weatherContent = document.querySelector("#weatherContent");
+const clearHistoryBtn = document.querySelector("#clearHistoryBtn");
+let isSearching = false;
 
 // DOM Elements for weather info
 const tempEl = document.querySelector("#temp");
@@ -40,72 +50,102 @@ const weatherIcons = {
   Wind: "fas fa-wind",
 };
 
-// Get history from localStorage
 function getHistory() {
-  const history = localStorage.getItem(HISTORY_KEY);
-  return history ? JSON.parse(history) : [];
+  try {
+    const history = localStorage.getItem(HISTORY_KEY);
+    return history ? JSON.parse(history) : [];
+  } catch (error) {
+    console.error("Error reading search history:", error);
+    localStorage.removeItem(HISTORY_KEY);
+    return [];
+  }
 }
 
-// Save to history
+function normalizeCityQuery(rawCity) {
+  return rawCity.trim().replace(/\s+/g, " ").slice(0, 80);
+}
+
+function buildWeatherUrl(city) {
+  const url = new URL(apiEndpoint);
+  url.search = new URLSearchParams({
+    units: "metric",
+    q: city,
+    appid: apiKey,
+  }).toString();
+  return url.toString();
+}
+
+function createNoHistoryMessage() {
+  const message = document.createElement("p");
+  message.className = "no-history";
+  message.textContent = "No search history yet";
+  return message;
+}
+
+function createHistoryItem(item) {
+  const historyItem = document.createElement("button");
+  historyItem.type = "button";
+  historyItem.className = "history-item";
+  historyItem.dataset.city = item.city;
+  historyItem.setAttribute("aria-label", `Search weather for ${item.city}`);
+
+  const cityName = document.createElement("div");
+  cityName.className = "history-item-name";
+
+  const icon = document.createElement("i");
+  icon.className = "fas fa-map-pin";
+  icon.setAttribute("aria-hidden", "true");
+
+  const cityText = document.createElement("span");
+  cityText.textContent = item.city;
+
+  cityName.append(icon, cityText);
+
+  const historyDate = document.createElement("div");
+  historyDate.className = "history-item-date";
+  historyDate.textContent = getTimeAgo(new Date(item.timestamp));
+
+  historyItem.append(cityName, historyDate);
+  return historyItem;
+}
+
 function saveToHistory(city) {
   let history = getHistory();
-  
-  // Remove if already exists (to avoid duplicates)
-  history = history.filter(item => item.city.toLowerCase() !== city.toLowerCase());
-  
-  // Add new entry at the beginning
-  history.unshift({
-    city: city,
-    timestamp: new Date().toISOString()
-  });
 
-  // Keep only the last MAX_HISTORY entries
+  history = history.filter((item) => item.city.toLowerCase() !== city.toLowerCase());
+  history.unshift({
+    city,
+    timestamp: new Date().toISOString(),
+  });
   history = history.slice(0, MAX_HISTORY);
 
   localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
   displayHistory();
 }
 
-// Display history
 function displayHistory() {
   const history = getHistory();
 
   if (history.length === 0) {
-    historyList.innerHTML = '<p class="no-history">No search history yet</p>';
+    historyList.replaceChildren(createNoHistoryMessage());
     return;
   }
 
-  historyList.innerHTML = history
-    .map((item, index) => {
-      const date = new Date(item.timestamp);
-      const timeAgo = getTimeAgo(date);
-      return `
-        <div class="history-item" onclick="searchFromHistory('${item.city}')">
-          <div class="history-item-name">
-            <i class="fas fa-map-pin"></i>
-            ${item.city}
-          </div>
-          <div class="history-item-date">${timeAgo}</div>
-        </div>
-      `;
-    })
-    .join("");
+  historyList.replaceChildren(...history.map((item) => createHistoryItem(item)));
 }
 
-// Get time ago string
 function getTimeAgo(date) {
   const now = new Date();
   const seconds = Math.floor((now - date) / 1000);
-  
+
   if (seconds < 60) return "Just now";
   if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
   if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
   if (seconds < 604800) return `${Math.floor(seconds / 86400)}d ago`;
-  
+
   return date.toLocaleDateString();
 }
 
-// Clear history
 function clearHistory() {
   if (confirm("Are you sure you want to clear all search history?")) {
     localStorage.removeItem(HISTORY_KEY);
@@ -113,23 +153,46 @@ function clearHistory() {
   }
 }
 
-// Search from history
 function searchFromHistory(city) {
   searchInput.value = city;
   checkWeather(city);
 }
 
+function setSearchButtonState(isLoading) {
+  isSearching = isLoading;
+  searchBtn.disabled = isLoading;
+  searchBtn.classList.toggle("is-loading", isLoading);
+  searchBtn.setAttribute("aria-busy", String(isLoading));
+  searchBtn.setAttribute(
+    "aria-label",
+    isLoading ? "Searching weather" : "Search weather"
+  );
+}
+
+function setErrorMessage(message) {
+  errorText.textContent = message;
+}
+
 async function checkWeather(city) {
+  const normalizedCity = normalizeCityQuery(city);
+
+  if (!normalizedCity) {
+    setErrorMessage("Please enter a city name.");
+    showError();
+    searchInput.focus();
+    return;
+  }
+
+  if (isSearching) {
+    return;
+  }
+
   try {
-    // Hide error message initially
+    setSearchButtonState(true);
+    setErrorMessage("City not found. Please try again.");
     errorMsg.classList.remove("show");
 
-    const response = await fetch(apiUrl + city + `&appid=${apiKey}`);
-
-    if (response.status === 404) {
-      showError();
-      return;
-    }
+    const response = await fetch(buildWeatherUrl(normalizedCity));
 
     if (!response.ok) {
       showError();
@@ -138,138 +201,118 @@ async function checkWeather(city) {
 
     const data = await response.json();
     displayWeather(data);
-    
-    // Save to history
-    saveToHistory(city);
+    saveToHistory(normalizedCity);
   } catch (error) {
     console.error("Error fetching weather:", error);
+    setErrorMessage("Unable to fetch weather right now. Please try again.");
     showError();
+  } finally {
+    setSearchButtonState(false);
   }
 }
 
 function displayWeather(data) {
-  // Hide placeholder and show content
   placeholder.classList.add("hidden");
   weatherContent.classList.remove("hidden");
 
-  // Update weather info
-  tempEl.innerHTML = Math.round(data.main.temp) + "°C";
-  cityEl.innerHTML = data.name + ", " + data.sys.country;
-  descriptionEl.innerHTML = data.weather[0].description;
-  humidityEl.innerHTML = data.main.humidity + "%";
-  windEl.innerHTML = data.wind.speed + " km/h";
-  pressureEl.innerHTML = data.main.pressure + " mb";
-  feelsLikeEl.innerHTML = Math.round(data.main.feels_like) + "°C";
-  visibilityEl.innerHTML = (data.visibility / 1000).toFixed(1) + " km";
-  cloudsEl.innerHTML = data.clouds.all + "%";
+  tempEl.textContent = `${Math.round(data.main.temp)}\u00B0C`;
+  cityEl.textContent = `${data.name}, ${data.sys.country}`;
+  descriptionEl.textContent = data.weather[0].description;
+  humidityEl.textContent = `${data.main.humidity}%`;
+  windEl.textContent = `${data.wind.speed} km/h`;
+  pressureEl.textContent = `${data.main.pressure} mb`;
+  feelsLikeEl.textContent = `${Math.round(data.main.feels_like)}\u00B0C`;
+  visibilityEl.textContent = `${(data.visibility / 1000).toFixed(1)} km`;
+  cloudsEl.textContent = `${data.clouds.all}%`;
 
-  // Update weather icon
   const mainWeather = data.weather[0].main;
   const iconClass = weatherIcons[mainWeather] || "fas fa-cloud";
-  weatherIcon.className = iconClass + " weather-icon";
+  weatherIcon.className = `${iconClass} weather-icon`;
 
-  // Update card color based on weather
   updateCardTheme(mainWeather);
-
-  // Hide error message
   errorMsg.classList.remove("show");
 }
 
 function updateCardTheme(weather) {
-  const weatherCard = document.querySelector("#weatherCard");
-  const icon = document.querySelector("#weatherIcon");
+  const themeClassMap = {
+    Clear: "theme-clear",
+    Clouds: "theme-clouds",
+    Rain: "theme-rain",
+    Drizzle: "theme-rain",
+    Snow: "theme-snow",
+    Thunderstorm: "theme-thunderstorm",
+  };
 
-  // Reset icon color
-  icon.style.color = "#667eea";
-
-  // Remove all theme classes
   weatherCard.className = "weather-card";
 
-  // Add theme based on weather
-  switch (weather) {
-    case "Clear":
-      weatherCard.style.background = "linear-gradient(135deg, #fff5e6 0%, #ffe8cc 100%)";
-      icon.style.color = "#f59e0b";
-      break;
-    case "Clouds":
-      weatherCard.style.background = "linear-gradient(135deg, #e0e7ff 0%, #d1d5f0 100%)";
-      break;
-    case "Rain":
-    case "Drizzle":
-      weatherCard.style.background = "linear-gradient(135deg, #cfe9f3 0%, #a8d8ea 100%)";
-      icon.style.color = "#06b6d4";
-      break;
-    case "Snow":
-      weatherCard.style.background = "linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%)";
-      icon.style.color = "#0ea5e9";
-      break;
-    case "Thunderstorm":
-      weatherCard.style.background = "linear-gradient(135deg, #1e293b 0%, #334155 100%)";
-      icon.style.color = "#fbbf24";
-      break;
-    default:
-      weatherCard.style.background = "white";
+  const themeClass = themeClassMap[weather];
+  if (themeClass && WEATHER_CARD_THEME_CLASSES.includes(themeClass)) {
+    weatherCard.classList.add(themeClass);
   }
 }
 
 function showError() {
   placeholder.classList.remove("hidden");
   weatherContent.classList.add("hidden");
+  weatherCard.className = "weather-card";
   errorMsg.classList.add("show");
 }
 
-// Event listeners
 searchBtn.addEventListener("click", () => {
-  const city = searchInput.value.trim();
-  if (city) {
+  const city = normalizeCityQuery(searchInput.value);
+  checkWeather(city);
+});
+
+searchInput.addEventListener("keydown", (event) => {
+  if (event.key === "Enter") {
+    const city = normalizeCityQuery(searchInput.value);
+    event.preventDefault();
     checkWeather(city);
   }
 });
 
-// Search on Enter key
-searchInput.addEventListener("keypress", (e) => {
-  if (e.key === "Enter") {
-    const city = searchInput.value.trim();
-    if (city) {
-      checkWeather(city);
-    }
+clearHistoryBtn.addEventListener("click", clearHistory);
+
+historyList.addEventListener("click", (event) => {
+  const historyItem = event.target.closest(".history-item");
+  if (!historyItem) {
+    return;
+  }
+
+  const { city } = historyItem.dataset;
+  if (city) {
+    searchFromHistory(city);
   }
 });
 
-// Load default city on page load
 window.addEventListener("load", () => {
   displayHistory();
   checkWeather("London");
-  
-  // Add mobile-specific optimizations
+
   if (window.innerWidth <= 768) {
     optimizeMobile();
   }
 });
 
-// Optimize for mobile
 function optimizeMobile() {
-  // Prevent double-tap zoom on buttons
-  document.querySelectorAll("button, input, .history-item").forEach(el => {
-    el.addEventListener("touchstart", function() {
-      this.style.opacity = "0.8";
-    });
-    el.addEventListener("touchend", function() {
-      this.style.opacity = "1";
-    });
+  document.querySelectorAll("button, input, .history-item").forEach((element) => {
+    const addPressedState = () => element.classList.add("pressed");
+    const removePressedState = () => element.classList.remove("pressed");
+
+    element.addEventListener("touchstart", addPressedState, { passive: true });
+    element.addEventListener("touchend", removePressedState);
+    element.addEventListener("touchcancel", removePressedState);
   });
 
-  // Haptic feedback on touch (iOS)
   if (navigator.vibrate) {
     searchBtn.addEventListener("click", () => {
       navigator.vibrate(10);
     });
-    document.addEventListener("click", (e) => {
-      if (e.target.closest(".history-item")) {
+
+    document.addEventListener("click", (event) => {
+      if (event.target.closest(".history-item")) {
         navigator.vibrate(5);
       }
     });
   }
 }
-
-

@@ -3,63 +3,61 @@
   <head>
     <meta charset="UTF-8" />
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no" />
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self' https:; script-src 'self' https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; img-src 'self' data: https:; font-src 'self' https://cdnjs.cloudflare.com; connect-src 'self' https://api.openweathermap.org; frame-ancestors 'none';" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no"
+    />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self'; style-src 'self' https://cdnjs.cloudflare.com; img-src 'self' data:; font-src 'self' https://cdnjs.cloudflare.com; connect-src https://api.openweathermap.org; base-uri 'self'; form-action 'self'; object-src 'none'; frame-ancestors 'none'; upgrade-insecure-requests;"
+    />
     <meta http-equiv="Permissions-Policy" content="geolocation=(), microphone=(), camera=()" />
     <meta name="referrer" content="no-referrer-when-downgrade" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="WeatherHub" />
     <meta name="theme-color" content="#667eea" />
-    <meta name="description" content="WeatherHub - Get real-time weather information for any city around the world with beautiful UI and search history." />
+    <meta
+      name="description"
+      content="WeatherHub - Get real-time weather information for any city around the world with beautiful UI and search history."
+    />
     <meta name="keywords" content="weather, weather app, real-time weather, city weather" />
     <title>Weather App - Real-time Weather</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" integrity="sha512-/SlX8/pOm5+CtIV02qIfEtMk2QIclqtjZSGOBOx16eVAMGRvfzqziTL/KPB4/bav3xg8I81DPCimumbntjY7vQ==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+      integrity="sha512-/SlX8/pOm5+CtIV02qIfEtMk2QIclqtjZSGOBOx16eVAMGRvfzqziTL/KPB4/bav3xg8I81DPCimumbntjY7vQ=="
+      crossorigin="anonymous"
+      referrerpolicy="no-referrer"
+    />
     <link rel="stylesheet" href="style.css" />
-    <style>
-      @supports(padding: max(0px)) {
-        body {
-          padding-left: max(12px, env(safe-area-inset-left));
-          padding-right: max(12px, env(safe-area-inset-right));
-          padding-bottom: max(12px, env(safe-area-inset-bottom));
-        }
-      }
-    </style>
   </head>
   <body>
-    <!-- Background Animation -->
     <div class="background-animation"></div>
-    
+
     <div class="container">
-      <!-- Header -->
       <div class="header">
         <h1><i class="fas fa-cloud-sun"></i> WeatherHub</h1>
         <p>Get Real-Time Weather Information</p>
       </div>
 
-      <!-- Search Section -->
       <div class="search-section">
         <div class="search-box">
-          <input 
-            type="text" 
-            id="searchInput"
-            placeholder="Enter city name..." 
-            spellcheck="false" 
-          />
-          <button id="searchBtn" class="search-btn">
-            <i class="fas fa-search"></i>
+          <input type="text" id="searchInput" placeholder="Enter city name..." spellcheck="false" />
+          <button id="searchBtn" class="search-btn" type="button" aria-label="Search weather">
+            <span class="search-btn-icon" aria-hidden="true"></span>
           </button>
         </div>
         <div class="error-message" id="errorMsg">
-          <i class="fas fa-exclamation-circle"></i> City not found. Please try again.
+          <i class="fas fa-exclamation-circle"></i>
+          <span id="errorText">City not found. Please try again.</span>
         </div>
       </div>
 
-      <!-- History Section -->
       <div class="history-section">
         <div class="history-header">
           <h3><i class="fas fa-history"></i> Search History</h3>
-          <button class="clear-history-btn" id="clearHistoryBtn" onclick="clearHistory()">
+          <button class="clear-history-btn" id="clearHistoryBtn" type="button">
             <i class="fas fa-trash"></i> Clear
           </button>
         </div>
@@ -68,28 +66,24 @@
         </div>
       </div>
 
-      <!-- Weather Card -->
       <div class="weather-card" id="weatherCard">
-        <!-- Placeholder -->
         <div class="placeholder">
           <i class="fas fa-search"></i>
           <p>Search for a city to get started</p>
         </div>
 
-        <!-- Weather Content -->
         <div class="weather-content hidden" id="weatherContent">
           <div class="weather-main">
             <div class="icon-section">
               <i class="fas fa-cloud weather-icon" id="weatherIcon"></i>
             </div>
             <div class="temp-section">
-              <div class="temp" id="temp">--°C</div>
+              <div class="temp" id="temp">--&deg;C</div>
               <div class="city" id="city">--</div>
               <div class="description" id="description">--</div>
             </div>
           </div>
 
-          <!-- Weather Details Grid -->
           <div class="details-grid">
             <div class="detail-card">
               <div class="detail-icon">
@@ -127,7 +121,7 @@
               </div>
               <div class="detail-info">
                 <p class="detail-label">Feels Like</p>
-                <p class="detail-value" id="feelsLike">--°C</p>
+                <p class="detail-value" id="feelsLike">--&deg;C</p>
               </div>
             </div>
 
@@ -154,9 +148,8 @@
         </div>
       </div>
 
-      <!-- Footer -->
       <div class="footer">
-        <p>Made with ❤ By Rohit shah</p>
+        <p>Made with &#10084; By Rohit Shah</p>
       </div>
     </div>
 
